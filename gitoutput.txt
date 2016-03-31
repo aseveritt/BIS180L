@@ -1,0 +1,24 @@
+commit 3845e5bd50aefb95e90d1fb24fcdda707376cd42
+Merge: 7ec8d13 2b9030e
+Author: bfnoack <bonoack@yahoo.com>
+Date:   Thu Mar 31 16:53:04 2016 -0700
+
+    Merge branch 'master' of https://github.com/aseveritt/BIS180L
+
+commit 7ec8d1361659959b4cab35f967895bd208f8be32
+Author: bfnoack <bonoack@yahoo.com>
+Date:   Thu Mar 31 16:52:07 2016 -0700
+
+    hi
+
+commit 2b9030eead950f1294c7b0fd63ee74a943c6116d
+Author: aseveritt <aseveritt@ucdavis.edu>
+Date:   Thu Mar 31 16:49:51 2016 -0700
+
+    what is this
+
+commit 59ea0c970783cdacbb35a29c3434d5c28710fa8c
+Author: Amanda Everitt <aseveritt@ucdavis.edu>
+Date:   Thu Mar 31 16:01:30 2016 -0700
+
+    Initial commit
