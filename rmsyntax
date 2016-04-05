@@ -1,0 +1,8 @@
+* text * italics
+** text ** bold
+[text](hyperlink)
+! ^ use once before for image 
+> use once for block quote
+* _ make a unordered list
+1. text then *rest of lists ordered list
+two spaces is a soft break
