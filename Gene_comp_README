@@ -1,0 +1,45 @@
+## compares di and mono nt sequences##
+
+1. copy all genomes over
+cp file ~/filelocation
+cat *.fas.gz > ~/filelocation/filename
+
+2. remove all headers
+zless #oldfile#  |grep -v '>' > #newfile#
+
+3. count all mono/di-nt
+grep '#char#' -o #filename# |wc -l
+
+## I predict that the di-nt composition frequences cannot be infered from the mono -nt composition because amino acids are not independently distributed (ex. Alu, repeats, codon bias etc)##
+
+results: fly
+total= 162367812
+A=47352930	freq(A)= 0.29
+T=47246682	freq(T)= 0.29
+G=33863611	freq(G)= 0.208
+C=33904589	freq(C)= 0.208
+AT= 13077321	freq(AT)= 0.0805 =/ 0.0841
+AG= 8654654	freq(AG)= 0.0533 =/ 0.06
+
+results: worm
+total=100286401 
+A=32371810      freq(A)= 0.323
+T=32373344      freq(T)= 0.323
+G=17759142      freq(G)= 0.177
+C=17782105      freq(C)= 0.177
+AT=8698276      freq(AT)= 0.0867 =/ 0.104
+AG=4974818      freq(AG)= 0.496  =/ 0.0572
+
+results: plant
+total=119481543 
+A=38223602     freq(A)= 0.320
+T=38177852     freq(T)= 0.320
+G=21528650     freq(G)= 0.180
+C=21551439     freq(C)= 0.180
+AT=10898778    freq(AT)= 0.0912 =/ 0.102
+AG=7014404     freq(AG)= 0.0587 =/ 0.0576
+
+#Given these results, I would look into areas where the mono-nt and di-nt freq are significantly different. This could be indication of codon bias or repeat elements. For example, I would start with the unusually low amount of the AT di-nt in C.elegans##
+
+4. to archive
+tar -czf Project1.tar GenomeComp
