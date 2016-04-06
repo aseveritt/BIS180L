@@ -1,0 +1,175 @@
+##Sequences Alignment Assignment##
+
+to unzip all folders: gunzip #filename#
+to put files in read only: chmod 0444 #filename#
+
+1. Size of the file
+##ls -ll
+2. Number of chromosomes
+##grep '>'  #seqfile# |wc -l
+3.Size of the genome in bp
+##grep -v '>'  #seqfile# |wc -m
+4.Number of protein-coding genes
+##grep -c '>' #proteinfile#
+5.Average protein length
+##grep -v '>' #proteinfile# |tr -d '\n'|wc -m
+## divide that by answer from 4
+
+Results:
+##A_thalania
+1. size_genome: 121183082
+   size_protein: 20006289
+2. number of chr: 5
+>Chr1 CHROMOSOME dumped from ADB: Jun/20/09 14:53; last updated: 2009-02-02
+>Chr2 CHROMOSOME dumped from ADB: Jun/20/09 14:54; last updated: 2009-02-02
+>Chr3 CHROMOSOME dumped from ADB: Jun/20/09 14:54; last updated: 2009-02-02
+>Chr4 CHROMOSOME dumped from ADB: Jun/20/09 14:54; last updated: 2009-02-02
+>Chr5 CHROMOSOME dumped from ADB: Jun/20/09 14:54; last updated: 2009-02-02
+>chloroplast CHROMOSOME dumped from ADB: Jun/20/09 14:54 == so no
+>mitochondria CHROMOSOME dumped from ADB: Jun/20/09 14:54 == so no
+3. bp of genome: 121182535
+4. protein coding genes: 35386
+5. ave protein length: 14482855/35386= 409.28
+
+##C_elegans
+1. size_genome: 102292161
+   size_protein: 14931762
+2. number of chr:6
+>I
+>II
+>III
+>IV
+>V
+>X
+>mt == so not included
+3. bp of genome: 102292132
+4. protein coding genes:26769
+5. ave protein length: 1192175/26769= 445.357
+
+##D_melanogaster
+1. size_genome: 172113892
+   size_protein:32872415 
+2.number of chr: 4 ( 2RL,3RL,4, XorY) 
+>YHet == may be included
+>dmel_mitochondrion_genome ==so not included
+>2L 
+>X == so not included
+>3L 
+>4 
+>2R
+>3R 
+>Uextra == so not included
+>2RHet 
+>2LHet
+>3LHet
+>3RHet
+>U == so not included
+>XHet== may be included
+3. bp of genome:172111277
+4. protein coding genes:30307
+5. ave protein length: 19981113/30307= 659.29
+
+
+##local alignment part##
+1. for copying the first protein I just did it by hand but I could do
+head -#len protei# > #newfile#
+2. History
+  958  shuffleseq ce1.fa -outseq ce1.shuffle.fa -shuffle 1000
+  959  water at1.fa ce1.shuffle.fa -gapopen 10 -gapextend 5 -outfile 1k.water
+  960  less 1k.water 
+  961  grep Score 1k.water | cut -d " " -f 3
+  962  grep Score 1k.water | cut -d " " -f 3 | sort -n
+  963  grep Score 1k.water | cut -d " " -f 3 | sort -n | head -501 | tail -2
+  964  grep Score 1k.water | cut -d " " -f 3 | sort -n | tail -501 | head -2
+  965  grep Score 1k.water | cut -d " " -f 3 | sort -n | uniq -c
+  966  grep Score 1k.water | awk '{sum+=$3} END {print sum/NR}'
+ 
+
+
+Questions:
+1.Is the shape of the curve normal? Do you expect it to be normal?
+#Yes, the shape of the curve was normal with the smallest values at both extremes of 25 and 50. I would expect this to be a normal distribution because when radomizing the seq you expect some to align very poor and some very well. However, most often the seq will align relatively well but not great- the median. Then any seq that aligns higher than the median can be considered significant.  
+2.Do you expect all protein comparisons to have the same distribution?
+#No, because some seq may be easier to align to. For example, if the protein being used is a highly conserved region, it will have a distribution shifted to the right. Also, if the protein seq is less restrictive and allows more gaps or mismathces it will shift the distribtion to the right. 
+3.How would protein composition and length affect the scores?
+#The longer the protein the more difficult it would be to align. This would shift the distribution to the left. The more repetitive the protein composition the easier if will be to align because it is more likely to align to the same place multiple times (bc global). 
+4.How would the scoring matrix and gap penalites affect the scores?
+#Having higher gap pentalties will lessen the scores and bring the distributuion to the left because it makes the alignment more restrictive. A more restrictive scoring matrix like BLOSSUM__ will result in lower scores than a permissive scoring matrix like BLOSSUM___. 
+5.How might real sequences be different from random?
+#Real sequences will have various repeats be it Alu, SSR, transposons,etc. Given this and codon bias, real genomes will obviosly have biased compositions whereas random sequences are not under the same biological constraints. 
+
+
+1.How many amino acids can I align per second?
+grep -v '>' ce1.fa |wc -m
+435
+grep -v '>' at1.fa |wc -m
+351
+time water at1.fa ce1.fa -gapopen 10 -gapextend 5 -outfile at_ce.water2
+Smith-Waterman local alignment of sequences
+
+real	0m0.140s
+user	0m0.063s
+sys	0m0.025s
+# Therefore 435*351 =152,685
+# 152685/.14= 1,090,607
+2.How many amino acids do I need to align to do this experiment?
+grep -v '>' c_B_query.fa |wc -m
+508
+grep -v '>' a.thaliana.protein.fa |wc -m
+14681363
+## Therefore 508*14681363 =7458132404
+## 7458132404/1,090,607= 6838.5 sec for A_thal proteome vs c_elegan protein
+grep -v '>' d_mel.protein.fa |wc -m
+20395691
+## 508*20395691 = 10361011
+## 10361011/1090607= 1000 sec for D_mel proteome vs C_elegan protein
+3.How long would it take to compare two proteomes?
+## (a_thal) 14681363 * (d_mel) 20395691 = 299436543206833
+##299436543206833/1090607= 274559528 sec for A_thal proteome vs D_mel proteome
+4. What is the best match in each genome?
+# in A_thaliana
+water c_B_query.fa ~/Labwork/SeqAlign/A_thalania/a.thaliana.protein.fa -gapopen 10 -gapextend 5 -outfile CvsA_proteome.water
+992  grep Score CvsA_proteome.water | sort -n
+# then I just less CvsA_proteome.water and did / to search for 'Score: 98'
+# Aligned_sequences: 2
+# 1: B0213.10
+# 2: AT1G01600.1
+# Matrix: EBLOSUM62
+# Gap_penalty: 10.0
+# Extend_penalty: 5.0
+#
+# Length: 256
+# Identity:      69/256 (27.0%)
+# Similarity:   121/256 (47.3%)
+# Gaps:          30/256 (11.7%)
+# Score: 98.0
+
+# in D_mel
+water c_B_query.fa ~/Labwork/SeqAlign/D_melanogaster/d_mel.protein.fa -gapopen 10 -gapextend 5 -outfile CvsD_proteome.water
+
+5.What protein is this?
+#blastp the A_thal gene seq that was AT1g016001 to find that this is a: 
+cytochrome P450, family 86, subfamily A, polypeptide 4 [Arabidopsis thaliana]
+1150 bits(2974)	0.0	Compositional matrix adjust.	554/554(100%)	554/554(100%)	0/554(0%)
+#blastp the D_mel gene seq that was 
+6.What are the alignment properties (% identity, etc.)
+# do they mean of blastp search or original? either way its answered above
+7.What is the expected score of your alignment at random?
+# to shuffle query seq 1000x and rerun water program
+shuffleseq c_B_query.fa -outseq c_B_query.shuffle.fa -shuffle 1000
+water ~/Labwork/SeqAlign/A_thalania/a_thal_protein.fa c_B_query.shuffle.fa -gapopen 10 -gapextend 5 -outfile random_CvsA.water
+
+#then to find median score
+random_CvsA.water | cut -d " " -f 3 | sort -n | tail -501 | head -2
+34.0
+#repeat for D_melanogaster to get 
+grep Score random_CvsD.water | cut -d " " -f 3 | sort -n | tail -501 | head -2
+35.0
+
+8.How different is your best score from random?
+# 98-34= 64 for A_thalania
+#   -35=
+How statistically significant is this score?
+#idk
+How biologically significant is this score?
+#idk
