@@ -1,0 +1,225 @@
+# BIS180L Midterm
+
+__XX points out of 100 total__
+
+__Student Name:__ Amanda Everitt
+
+__Student ID:__ 998974934
+
+-------------------------------------------------------------------------------------------------------
+__PS-Deductions:__2
+## Question 1 (5 points). 
+_Load the data, merge the two data sets, and provide a summary._
+**PS**-2 do not replace NA with 00 
+```{r}
+knitr::opts_chunk$set(cache=TRUE, autodep=TRUE)
+data.mdp.pop <- read.csv("mdp_pop.csv", row.names=1, na.strings=c("NA","00")) #import data where first column is row names and any missing data is either NA/00
+data.mdp.traits <- read.csv("mdp_traits2.csv", row.names=1, na.strings=c("NA","00"))
+data.mdp <- merge(data.mdp.traits, data.mdp.pop,by= "row.names") #merge two datasets by row names(taxa in this case)
+summary(data.mdp) #where row.names represents the taxa identifier
+```
+
+## Question 2 (5 points).
+__The MDS values are provided for you.  Use these to make plot that examines population structure.  What does this plot suggest about population structure?__    
+**PS**-0
+```{r}
+#install.packages(ggplot2)
+library(ggplot2)
+ggplot(data.mdp, aes(V1,V2)) + geom_point() 
+```
+
+>This plot suggests that there may be two sub populations, but overall there appears to be a lot of random mating. There are no clear and distinct separations where strong assortative mating is occuring between plant populations. Overall, this suggests the population structure is relatively uniform.
+
+## Question 3 (5 points). 
+_Replot the MDS data but this time have the color of the points represent the population assignments.  PSMix was run with K=3, does this seem reasonable?_  
+**PS**-0
+```{r}
+ggplot(data.mdp, aes(V1,V2, color = factor(popID))) + geom_point() 
+```
+
+>By coloring the data by population ID, clear population seperations are more visible than before. There appears to be three sub populations with population 2 and 3 more similar to each other than to population 1. Using K=3 for PSMix does seem reasonable because there are three sub populations. 
+
+## Question 4 (5 points).
+_You want to know if the different "populations" vary significantly for day to pollen.  Start by making a plot that examines days to pollen variation in the different populations._  
+**PS**-0
+```{r}
+qplot(dpoll, data = data.mdp, geom = "density", alpha = I(0.5), fill = factor(popID))
+```
+
+
+## Question 5 (5 points). 
+_From your plot do you think there are any samples that represent a measurement error?  If so, remove that sample (using R commands) and replot._  
+**PS**-0
+>Yes, there appears to be a few extreme values that are skewing the graph's dpoll scale so that it is not visually informative. The outlier is causing the average values of dpoll to not be represented well. 
+```{r}
+tail(sort(data.mdp$dpoll), n=10) # to visualize how many/how extreme outlier is
+data.mdp.no_outlier <- data.mdp[!(data.mdp$dpoll=="640"),] # grab the opposite of every row in which dpoll ==640
+tail(sort(data.mdp.no_outlier$dpoll), n=10) # to make sure it was done correctly
+qplot(dpoll, data = data.mdp.no_outlier, geom = "density", alpha = I(0.5), fill = factor(popID))
+```
+
+
+## Question 6 (5 points). 
+_Using your new data set (if you omitted some samples) determine the mean days to pollen for each population and do a statistical test to determine whether or not there is significant variation for days to pollen among the populations. Interpret the results with respect to whether or not a population correction would likely be needed for a GWAS._  
+**PS**-0
+```{r}
+summary(subset(data.mdp.no_outlier, data.mdp.no_outlier$popID ==1)$popID) #with new data set, take all values in which popID =1 to make sure subset is working
+
+mean(subset(data.mdp.no_outlier, data.mdp.no_outlier$popID ==1)$dpoll) #mean of dpoll column for each population susbset of data
+mean(subset(data.mdp.no_outlier, data.mdp.no_outlier$popID ==2)$dpoll)
+mean(subset(data.mdp.no_outlier, data.mdp.no_outlier$popID ==3)$dpoll)
+dpoll.anova <- aov(dpoll ~ popID,data=data.mdp.no_outlier) #One way ANOVA for dpoll by popID
+summary(dpoll.anova)
+```
+>There is significant variation of days to pollen between the three populations. The ANOVA results reject the null hypothesis (that there is no variation) with p < 0.0001. This means that in order to preform an accurate GWAS analysis that is not skewed by population variance, the data would need to be normalized. 
+
+## Question 7 (15 points)
+_Why do the following commands not work as expected? Explain why and suggest a workaround for each one._
+
+        gunzip /data/C.elegans/*  
+        gunzip /data/A_thaliana/* 
+        
+>The files located in the directories have the permissions -rw-r--r-- meaning that the owner can read and write to them, but the group and public can only read them. By unzipping the files, the user is trying to edit those files-- which they do not have permission to do. To solve this problem the user should copy the files before unzipping them. This creates a duplicate of the original files that the user can now edit. 
+
+* cp /data/C.elegans/* ./
+* cp /data/A_thaliana/* ./
+* gunzip *.gz  
+
+>Alternatively, the user could ask the owner to change the permissions by typing 
+'chmod 666 /data/C.elegans/'
+
+** IK: but you might not want to go messing with permissions, right? Explain why this might be. A_thaliana was misspelled too. -2 **  
+
+>** By changing permissions, you are allowing anyone to permanently edit your file. This is not suggested for any original data file because you (or someone) can accidentally delete information you may need later in time. It is best to always keep the original files so you can retrace your analysis steps if necessary. **  
+>** In regards to the spelling error of A_thaliana versus A.thaliana, the user should be tab completing their command instead of typing it to avoid silly spelling issues. **
+
+        water -asequence flypep.fa -bsequence wormpep.fa  
+
+>This water command does not work as expected because it is missing three mandatory qualifiers for the program to run. Under the manual page for the water program (water --help) the only optional arguments are -datafile and -brief, the rest are required. To solve this issue the command could be re written as:  
+
+* water -asequence flypep.fa -bsequence wormpep.fa -gapopen 10 -gapextend 5 -outfile fly_worm.water  
+* or more simply: water flypep.fa wormpep.fa -gapopen 10 -gapextend 5 fly_worm.water
+
+** IK: there's a bigger problem (proteome vs proteome) -4 **
+>** The larger issue in comparing the fly proteome versus the worm proteome is the time constraint. Given that each of these files blah blah **  
+
+## Question 8 (45 points)
+
+_Be sure to include the code required to answer each of these questions_
+
+1. Align the Drosophila protein FBpp0110417 to the C. elegans proteome with `blastp` using default parameters.  
+
+(Given that all protein and sequence files have already been copied into my directories and unzipped)     
+
+>a. To obtain Drosophila protein FBpp0110417:  I used the search function within 'less d_mel.protein.fa' to search for ' FBpp0110417' and then copied that into a new file 'FBpp0110417.fa'    
+
+>b. To blastp with against proteome:  
+* __formatdb -i c_elegans.protein.fa -p T 2> /dev/null__  
+* __time blastp -query ./D_melanogaster/FBpp0110417.fa -db ./C_elegans/c_elegans.protein.fa > flygene_worm.default__
+* real	0m4.024s  
+* user	0m3.520s  
+* sys	0m0.356s  
+
+2. Using the same search parameters, do the alignment with `water`.   
+
+>* __time water ./D_melanogaster/FBpp0110417.fa ./C_elegans/c_elegans.protein.fa -gapopen 5 -gapextend 2 flygene_worm.water__
+* real	34m54.711s
+* user	29m53.548s
+* sys	0m7.581s
+
+
+3. How much faster is BLAST?    
+
+>BLAST was 34.14 min faster than water when performing the identical alignment. 
+
+** IK: would be more impressive and useful as a ratio -2 **  
+
+>** BLAST can align ajkd **
+
+
+4. Do you expect `blastp` and `water` to produce the exact same alignment?    
+
+>Yes, because the query, database, and parameters are the same.  
+
+|  |  gap open  |  gap extend  |
+|:--:|:-----|:-----|
+| water  |   5   |   2   |
+|default blastp  |   5   |   2   |
+
+** IK: they are? where did you get this info? Check the end of your blast report. -2 **
+
+5. Are the alignments exactly the same?  
+
+>No, the alignments are very different. First, I noticed the water file is 29K larger. To make sure this wasn't due to formatting differences, I counted the amount of alignments returned by each program to find that water returns 26769 alignments and BLAST only 20. This was very odd so I also checked to see if a similar BLAST alignment in the water file returned the same statistics-- which they did not.  
+
+| gene F32A6.3c |  Score  |  % Identity | Gaps |
+|:--:|:-----|:-----|:-----|
+| water  |   891   |   27.2%   | 14.3% |
+|default blastp  |   268   | 24% | 9% |
+
+* __ls -lh__
+* __grep Score flygene_worm.default.fa |wc -l__ # gives 20
+* __grep Score flygene_worm.water |wc -l__ # gives 26769
+
+6. According to BLAST, what is the score of an expected alignment?  
+
+>An expected alignment is an alignment that is likely to occur by chance. This is denoted by the E-value. By using 1e-10 as a cut off, meaning that any E value below that cut off is significant and not expected, I get an average score of 32.9 in this data set. In general, expected alignments should have lower scores because they have weaker alignments. For comparison, the score of a significant alignment in this data set would be : ((685+553+501)/3)= 579.  
+
+* __grep Expect flygene_worm.default | awk '{print $3, $8}'| awk '$2 > 1^-10{print}'__  #grab the scores and expected values for each alignment, and print lines where the E value is greater than 1e-10
+*then I just averaged the values by hand (because there were only 16) to get 32.9. 
+
+Score =  268 bits (685),  Expect = 2e-76, Method: Compositional matrix adjust.  
+Score =  217 bits (553),  Expect = 1e-59, Method: Compositional matrix adjust.  
+Score =  197 bits (501),  Expect = 3e-53, Method: Compositional matrix adjust.  
+Score = 37.0 bits (84),  Expect = 0.053, Method: Compositional matrix adjust.  
+Score = 37.0 bits (84),  Expect = 0.055, Method: Compositional matrix adjust.  
+
+** IK: the expected alignment has an E-value of 1.0 -5 **
+
+7. What is the score of an expected alignment with shuffled sequences?  
+
+>With shuffled sequences, the score of an expected alignment using the same method as before is 32.17.  
+
+>a. To make shuffled sequence:
+* __shuffleseq c_elegans.protein.fa -outseq c_elegans.protein.shuffled.fa__  
+
+>b. To make sure shuffleseq worked:
+* __compseq c_elegans.protein.fa -word 1 -outfile c_elegans.protein.comp__
+* __compseq c_elegans.protein.shuffled.fa -word 1 -outfile c_elegans.protein.shuffled.comp__
+* __diff c_elegans.protein.comp c_elegans.protein.shuffled.comp__ # returns nothing=good      
+
+>c. To run alignment:
+* __formatdb -i c_elegans.protein.shuffled.fa -p T 2> /dev/null__ 
+* __blastp -query FBpp0110417.fa -db c_elegans.protein.shuffled.fa > flygene_worm.shuffled2__    
+
+>d. To calculate score of expected alignments with 1e-10 cut off:
+* __grep Expect flygene_worm.shuffled | awk '{print $3,$8}'__ # prints scores and E values for each alignment
+* scores average to 32.17 with no E values lower 1e-10
+* I also preformed this with by shuffling the one fly gene (instead of the whole worm proteome) and it returned a value of 31, so at least that's consistent. ¯\_(ツ)_/¯ (commands not shown)  
+
+** IK: what about when aligning with water? -2 **
+
+
+8. Plot the score distribution of shuffled sequences using R.  
+* __grep Expect flygene_worm.shuffled2 | awk '{print$8}' | tr -d ',' > scoredist.txt__ # grab all the E values, and have one on each line in the file scoredist.txt
+```{r}
+data.score.dist <- read.delim("~/Labwork/SeqAlign/scoredist.txt", header = FALSE) #import scores blast created. file had no header
+qplot(V1, data = data.score.dist, geom = "density") #make density plot with Evalues as x axis  
+```
+
+9. How many Z-scores away from expectation is the highest scoring alignment?  
+
+>The highest scoring alignment for the random shuffled proteome was 35.4 which is 3.23 away from the average score (32.17) for an expected alignment which occurs by chance. In contrast, the highest scoring alignment for the original alignment was 268 which is 235.1 Z-scores away from expectation in that data set (32.9). This further confirms that the top three alignments that occured in the fly gene against worm proteome were signficant and are not expected to occur by chance.  
+
+## Question 9 (10 points)
+
+_Computational sequence alignment is fundamentally flawed both biologically and statistically. Briefly explain its flaws and why we continue to use it as is._  
+
+>Biologically, sequence alignments rely on many assumptions that are inaccurate. For example, in computing the E values using Karlin Altschul the formula assumes that sequences can be infinitely long, the letters are independent and identically distributed, and alignments do not contain gaps. Obviously, this does not represent biological data as evident by average sequence lengths, repeat elements, and codon bias. However, many algorithms have been put in place to minimize the biological flaws like size adjustment and low complexity filters.  
+>Statistically, sequence alignments can generate many false positives due to multiple hypothesis testing.   
+>However, we still use computational sequence alignments because of tractability. Although it may not be the best method, it is quick, well understood, and gives generally the same distributions as expected from the biological data. 
+
+
+** IK: mostly awesome -1 **
+
+** IK total -18 = 52 **

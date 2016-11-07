@@ -1,0 +1,205 @@
+# BIS180L Final
+__Spring, 2016__  
+__Available June 2, 2016__  
+__Due June 8, 9 AM__  
+
+__94 points out of 100 total__
+
+__Student Name:__ Amanda Everitt  
+
+__Student ID:__ 998974934  
+
+```{r setup, include=FALSE, eval=TRUE}
+knitr::opts_chunk$set(cache=TRUE,autodep = TRUE)
+library(ggplot2)
+setwd("~/MEGA/BIS180L/Labwork/Github/Final_Everitt.Amanda")
+```
+
+## Question 0 (4 points)
+
+Throughout this assignment, you code should have helpful comments and appropriate variable names.
+
+1 pt for helpful comments  
+1 pt for appropriate variable names  
+2 pts for well formatted R Markdown (-1 if explanatory answers are in code blocks, -1 if some code is not evaluated and plots are just displayed as images)
+
+## Question 1 (26 points)
+
+_At the end of the network lab we used k-means clustering to group our differentially expressed genes into k=4 groups.  Let's say that you have done this analysis for your PI.  You tell her "Look! I can group our differentially expressed genes into four clusters!"  Then you show her the PCA plot.  She says "Great! But what do those clusters represent in terms of how the genes are expressed?"_
+
+_Your job is to make a plot that answers this question.  You want a plot that for each cluster of genes shows their mean log2 expression (averaged across genes) for each of the group categories.  To help you get started I melted the log2 expression values for each of the genes in the GxE subset (those used in the clustering lab).  You can find those in the file `GxE_counts_melt.csv`.  I also provide the cluster assignments that resulted from running the `kmeans(GxE_counts, 4)` command.  These are in `Kmeans_cluster_4.csv`._  
+
+_**(A)** Make the plot. (20 pts)_  
+
+```{r}
+GxE_counts_melt <- read.csv("GxE_counts_melt.csv") 
+cluster_assign <- read.csv("Kmeans_cluster_4.csv")
+colnames(cluster_assign)[colnames(cluster_assign)=="X"] <- "gene"   #change name so I can merge
+GxE_data <- merge(GxE_counts_melt, cluster_assign, by= "gene")   #merge cluster assignment onto right gene name
+```
+
+```{r}
+#To make general barplot
+bycluster <- aggregate(GxE_data$log2_counts, list(GxE_data$cluster), mean) #make a matrix of the expression value means by cluster (used aggregate, not tapply)
+
+mp <- barplot(bycluster$x, axes= TRUE, axisnames = FALSE, ylab="log2 expression", xlab="Cluster numbers", col=rainbow(20), main="Mean log2 expression (clusters)", ylim=c(0,7))
+text(x = mp, y = bycluster$x, label = bycluster$x, pos = 3, cex = 0.8) #add value text
+text(mp, par("usr")[3], labels = bycluster$Group.1, srt = 45, adj = c(1.1,1.1), xpd = TRUE, cex=.9) #label each bar
+```
+
+```{r}
+#To make 4 other graphs
+bytreatment <- aggregate(GxE_data$log2_counts, list(GxE_data$description), mean)#decided to use aggregate and not tapply because it returns in matrix - not vector
+
+#I know this looks long. I just didn't subset my data seperately so it takes the mean of expression values(just for cluster1) and separates based on description
+clus1 <- aggregate(subset(GxE_data, GxE_data$cluster == 1)$log2_counts, list(subset(GxE_data, GxE_data$cluster == 1)$description), mean)
+clus2 <- aggregate(subset(GxE_data, GxE_data$cluster == 2)$log2_counts, list(subset(GxE_data, GxE_data$cluster == 2)$description), mean)
+clus3 <- aggregate(subset(GxE_data, GxE_data$cluster == 3)$log2_counts, list(subset(GxE_data, GxE_data$cluster == 3)$description), mean)
+clus4 <- aggregate(subset(GxE_data, GxE_data$cluster == 4)$log2_counts, list(subset(GxE_data, GxE_data$cluster == 4)$description), mean)
+
+#Plot 1 begins
+mp <- barplot(clus1$x, axes= TRUE, axisnames = FALSE, ylab="log2 expression", col=rainbow(20), main="Cluster 1 mean log2 expression profile", ylim= c(-1,6))
+text(mp, par("usr")[3], labels = clus1$Group.1 , srt = 45, adj = c(1.1,1.1), xpd = TRUE, cex=.9) #label each bar with description name
+
+#Plot 2 begins
+mp <- barplot(clus2$x, axes= TRUE, axisnames = FALSE, ylab="log2 expression", col=rainbow(20), main="Cluster 2 mean log2 expression profile", ylim= c(-1,6))
+text(mp, par("usr")[3], labels = clus2$Group.1 , srt = 45, adj = c(1.1,1.1), xpd = TRUE, cex=.9) #label each bar
+
+#Plot 3 begins
+mp <- barplot(clus3$x, axes= TRUE, axisnames = FALSE, ylab="log2 expression", col=rainbow(20), main="Cluster 3 mean log2 expression profile", ylim= c(-3,3))
+text(mp, par("usr")[3], labels = clus3$Group.1 , srt = 45, adj = c(1.1,1.1), xpd = TRUE, cex=.9) #label each bar
+
+#Plot 4 begins
+mp <- barplot(clus4$x, axes= TRUE, axisnames = FALSE, ylab="log2 expression", col=rainbow(20), main="Cluster 4 mean log2 expression profile", ylim= c(-1,6))
+text(mp, par("usr")[3], labels = clus4$Group.1 , srt = 45, adj = c(1.1,1.1), xpd = TRUE, cex=.9) #label each bar
+```
+
+_**(B)** Describe each cluster with respect to the distinguishing features of its gene expression profile.  Based on this do you think that the clustering has provided us with biologically meaningful information? (6 pts)_  
+
+>The first graph just shows that generally, cluster 3 has the lowest mean(0.77) and cluster 2 has the highest mean (5.5) expression values. The next four graphs go into more detail of each condition in the clusters. Cluster 1 has reduced expression in leaf and petiole tissue in both DP and NDP conditions. In contrast, cluster 2 has a relatively consistent expression of all tissue/condition combinations. Cluster 3 has a noticeably lower expression in all tissue/conditions, but especially reduced expression in leaf and petiole tissues. Similar to cluster 2, cluster 4 has a consistent expression but the maximums are noticeably lower. Overall, cluster 1 and cluster 3 have reduced expression in leaf and petiole tissues, cluster 2 has the highest expression, and cluster 3 has the lowest. 
+
+## Question 2 (12 points)
+
+_Your friend has just done an Illumina run. She asks you to help her determine if her libraries are of good quality.  The reads are in the file `Maize_s_5_sequence_200K.txt`._
+```
+mv Maize_s_5_sequence_200K.txt Maize_s_5_sequence_200K.fq
+fastqc Maize_s_5_sequence_200K.fq 
+```
+_**(A)** Are there any quality concerns with the sequence?  If so describe them._ (5 points)  
+
+>Yes, there are quality concerns with the sequences. It appears that the  Per base sequence content, Per base GC content, Per sequence GC content, Sequence Duplication Levels, Overrepresented sequences, and Kmer Content are all unsatisfactory according to Fastqc. 
+
+_**(B)** What program did you use?_ (2 points)  
+
+>I used Fastqc which is a user friendly program which preforms quality control checks on high throughput data like Illumina. 
+
+_**(C)** What would your advice to your friend be?  If there is a problem with her sequence is there anything she can do to clean up her file, or should she go back to the bench?_ (5 points)  
+
+>My advice would be to first do some quality trimming. For example, she could use Trimmomatic which will trim poor sequence qualities. This may help with the sequence length distrbution and Kmer content. Usually the quality of reads trails at the ends due to mechanical bias in Illumina platforms, Trimmomatic will trim it back--making the lengths more uniform. Also, it appears the the Illumina primer is still in the reads as well. Removing the primers will take care of the "overrepresented sequences" problem. The main cause of concern in these sequences is the Per Sequence GC content. This should follow a normal distribution but instead it has three large peaks. More research would need to be done to see if the Maize genome has three commonly occuring GC content percentages-- or if it's an error with their data.
+
+## Question 3 (8 points)
+
+_A postdoc in your lab is doing a GWAS analysis and describes their pipeline to you: They have measured body mass index (BMI) in a worldwide diversity panel of 500 rat strains.  They also have genotyped these rats at ~ 1,000,000 SNPs.  For each SNP they plan to perform a t-test to ask if rats that harbor different alleles at that SNP have significantly different BMI.  They will call a SNP significant if its t-test has a p-value of < 0.05._
+
+_Give two potential problems with this analysis.  For each problem describe why it is a problem and what they could to to address it._  
+
+>Problem 1: One major problem with their analysis is using a t-test for the statistical significance. T-tests should be used when you're comparing two, normally distributed and independent groups. Here, we have 1,000,000 different SNPS with 500 samples, which are very unlikely to be normally distributed. A t-test is not the correct test for signficance to use in this scenario. Instead they should normalize their data and preform an ANOVA (alows for multiple groups).    
+
+>Problem 2: In their GWAS analysis they are using "a worldwide diversity panel of 500 rat strains". This causes concern because there is going to be a lot of noise in the SNP calls just due to the large amount of variation in their sample --not necessarily due to BMI. If they do find correlations between certain SNPs and BMIs it will be difficult to determine if it is a true correlation, or just strain differences. This would be like taking humans from Japanese and European decent and doing a GWAS to see if they have SNPs for heart disease. Some information will be gained, but the differences just due to lack of gene flow will cloud any real results. I would suggest they reduce their rat samples size to 500 rats from 2-3 related strains of varying BMI.
+
+## Question 4 (9 points)
+
+_In the lab examining the VCF SNP file we discussed what the genotypes "0/0", "0/1" and "1/1" referred to, but the file contains other designators as well._
+```{r, eval=TRUE}
+vcf.data <- read.csv("IMB211_R500_VCF_Final.csv",row.names = 1, as.is = TRUE)
+vcf.data <- vcf.data[complete.cases(vcf.data[,c("IMB211_gt","R500_gt")]),] #only keep rows where we have both genotypes
+table(vcf.data$IMB211_gt)
+#table(vcf.data$R500_gt)
+```
+
+_**(A)** Subset the VCF file to find SNPs that have "2/2" calls for IMB211_
+```{r}
+IMB22 <- subset(vcf.data, vcf.data$IMB211_gt == "2/2") #I know this is correct because there are 253 elements which was shown in the IMB table
+```
+
+_**(B)** Examine the "2/2" SNPs.  What does this designation mean?  From this info provide a more general description that explains all of the different genotype designations present in this file._  
+
+>The 2/2 designation means that the most probable genotype for those samples are homozygous for the second alternate allele. For each position on chromosome A01 the reference allele is in "REF" and the alternate allele(s) are listed in "ALT". Meaning that every position in the IMB22 data frame I subset-ed has at least two values in the "ALT" column. This pattern continues for the rest of the file:  
+
+* 0/0 is homozygous for reference allele  
+* 0/1 is heterozygous for the reference allele and first alternate allele
+* 0/2 is heterozygous for the reference allele and second alternate allele
+* 1/1 is homozygous for the first alternate allele
+* 1/3 is heterozgous for the first alternate allele and thrid alternate allele
+* 2/2 is homozygous for the second alternate allele
+* 2/3 is heterozgous for the second alternate allele and third alternate allele
+* 2/4 is heterozgous for the second alternate allele and fourth alternate allele
+* 3/3 is homozygous for the third alternate allele
+
+_**(C)** Provide a hypothesis as to why are there fewer "2/2" SNPs as compared to "1/1" SNPs._  
+
+>There are less positions that have two alternate alleles than one alternate allele.To be exact, there are 45324 positions with only one alternate allele, 744 with two alternates, and 8 with three alternates. Biologically this makes sense because there is likely just one dominate SNP variation that is still functional-- the more alternate alleles the less probable. 
+```{r}
+library(stringr)
+alt1<- subset(vcf.data, (str_count(vcf.data$ALT,pattern=","))==0) #no commas= 1alt
+alt2<- subset(vcf.data, (str_count(vcf.data$ALT,pattern=","))==1) #1 comma  = 2alt
+alt3<- subset(vcf.data, (str_count(vcf.data$ALT,pattern=","))==2) #2 comma  = 3alt
+#just looked in global environment to get the numbers for above FYI
+```
+
+## Q5 (6 points)
+
+_Write bash (or R) commands to loop through files "text1" through "text4" and print their contents to the screen_
+
+```{r, engine='bash'}
+for i in `seq 1 4`; do echo `cat text$i`; done
+```
+
+## Q6 (23 points)
+
+_The tomato line "IL4.3" has a genome that is mostly derived from domesticated tomato (*Solanum lycopersicum*) but on chromosome 4 contains some DNA from the wild tomato relative *S. pennellii*.  IL4.3 has a number of developmental differences compared to *S. lycopersicum*, in particular its leaves are a different shape and size than domesticated tomato.  Examining the leaves in detail you find that the size of the leaf cells in IL4.3 is different from the leaf cell size in domesticate tomato.  Together, this indicates that in IL4.3 the *S. pennellii* chunk on chromosome 4 is causing differences in leaf development._
+
+_In an effort to undestand the mechanistic basis of the IL4.3 phenotypes, the Sinha and Maloof labs performed RNAseq on IL4.3 and on domesticated tomato to look for differentially expressed genes.  We examined genes that were upregulated in IL4.3 compared to domesticated tomato and performed a promoter motif enricmhment analysis on these genes.  The top two results are in the table below:_
+
+| Name                       | Motif       | IL4.3.up%universe | IL4.3.up%set | IL4.3.up.p-value |
+|----------------------------|-------------|-------------------|--------------|------------------|
+| MSA (M-specific activator) | YCYAACGGYYA | 0.4               | 7.0          | 2.79E-08         |
+| E2F binding site motif     | TTTCCCGC    | 1.2               | 8.8          | 1.14E-06         |
+
+_**(A) 2.5 points** Explain the meaning of each column_  
+
+* Name: Motif name
+* Motif: Known binding motifs which occured on upregulated genes in IL4.3 tomatoes
+* IL4.3.up%universe: percent of all expressed genes in IL4.3 tomatoes which this motif occured on. (aka the "Jar"")
+* IL4.3%up%set: percent of target set gens in IL4.3 tomatoes which this motif occured on.
+* IL4.3.up.p-value: significance of motif presence in target genes(set) verses all expressed genes(universe). A low p value would mean the motif was signicicantly upregulated on target set of genes. 
+
+_**(B) 2.5 points** What is an appropriate "universe" for the experiment?  why?_  
+
+>An approptiate "universe" for this experiment would be all expressed genes in IL4.3. Using the expressed genes versus all known genes is a good idea because it doesn't cloud the data and will be more representative of the actual motifs/TFs present. For example, if the motif occured in 1,000 other places--but they're all not expressed, then it still doesn't change the expression or mean anything in the context of this specific tissue. By just using expressed genes as the "universe" it allows all motifs that actually influence expression to be compared for differential regualtion.
+
+_**(C) 3 points** What is the conclusion from this analysis?_  
+
+>This basic output allows me to conclude that the promoter motifs MSA and E2F are significantly upregulated in the IL4.3 genes that were upregulated when compared to domestic tomatoes. This means that these motifs and the complementary transcription factors are very likely to play a role in leaf development. 
+
+_**(D) 5 points** Do some research to learn about these motifs.  Given what you have learned, how might they relate to the cell size differences observed in these two tomato lines?  I am not looking for a long essay here, just a few sentences.  Do provide links to your sources_  
+
+>**MSA (M-specific activator)** are mitosis-specific activators which are G2/M phase-specific enhancers. Since this motif if known to bind transcription factors which enhance cell division and cell growth it is very plasible that this motif/TF influences tomato cell size differences. 
+(Kato, Kiichi et al. “Preferential Up-Regulation of G2/M Phase-Specific Genes by Overexpression of the Hyperactive Form of NtmybA2 Lacking Its Negative Regulation Domain in Tobacco BY-2 Cells.” Plant Physiology 149.4 (2009): 1945–1957. PMC. Web. 6 June 2016.)   
+>**E2F** are transcription factors which play a large role in transcription activation by recruiting RNA polymerase. Initiating transcription will activate cell division which will influence cell size. E2F factors were even found to be up-regulated in response to DNA damage- further suggesting they play a vital role in gene transcription. (Transcription Factor E2F-1 Is Upregulated in Response to DNA Damage in a Manner Analogous to That of p53
+Christine Blattner, Alison Sparks, and David Lane Mol. Cell. Biol. May 1999 19:5 3704-3713; doi:10.1128/MCB.19.5.3704)  
+
+_**(E) 5 points** Give a testable hypothesis about the genetic differences between IL4.3 and domesticated tomato that leads to the observed phenotype._  
+
+>My hypothesis is that MSA motif is overexpressed in IL4.3 leaf tissues which causes more cell division in the leafs leading to larger cell sizes. E2F is also overexpressed just becuase with more cell division, more transcription is necessary which requires E2F. 
+
+_**(F) 5 points** Outline bioinformatic and/or experimental approchaes that would test your hypothesis_  
+
+>A bioinformatics approach to testing this hypothesis would be to look for RNAseq data from a tomato species with even larger leaves to see if our two candidate genes are even further upregulated. We could also do a GO term analysis with IMB4.3 to see if overall, more genes involved in cell division are upregulated in our RNAseq data. However, the only way to absolutely determine the two motifs and they're associated genes cause the cell size phenotype is to preform genetics. You could use CRISPR to target a candidate motifs to make an indel which will make the binding site non functional (you could make sure its non functional by doing a TF footprint assay to make sure nothing is binding on your motif). After rearing the knockout seeds, the leaf size can be studied to see if it is like the domestic or IL4.3 tomatoes.This would be repeated for the candidate motifs seperately, so you can determine if the motifs are necessary or sufficient. If the motifs cannot improve gene expression on their own, then a whole gene knockout would need to be done.  
+
+## Q7: (12 points).
+_Given the Perl scripts in the IME lab, explain how you could build a system that can analyze RNA-seq reads to determine if they correspond to coding or non-coding parts of transcripts. What data sources would you need? You don't need to write any software, but you must explain in detail how your system works._  
+
+>To recognize coding versus non-coding parts of transcripts you first have to identify differences between each. Generally, coding sequences will have: start codons, SD/RBS, 3' and 5' splice sites if eukaryotic, and stop codons. We will need RNAseq data that has been demultiplexed, ran through quality controls, and kept in fasta format. Then we need a way to measure how different two RNAseq reads are. We could do this by writing a script that reports the frequency of ATG, RBS, GC content, and stop codons within a each RNAseq read (~kmerstats.pl). Then we could calculate the Kullback-Leibler distance between a pairs of reads using their frequencies to get a bunch of pairwise comparisons (~kl_distance.pl). Lastly we would need a way to group similar RNAseq transcripts. We could do this by clustering by KL distance (~discriminator.pl). In theory, you would get three main clusters: RNAseq reads which are coding, RNAseq reads which are a mix of coding/non-coding, and RNAseq reads which are non-coding.
+
+**IK**-6 It's not at all what we did in the IME lab. Compare pairs of reads with KL distance? KL distance compares two frequency distributions. Clustering by KL distance? What does that mean?
