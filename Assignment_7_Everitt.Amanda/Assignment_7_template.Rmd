@@ -1,0 +1,235 @@
+---
+title: "Assignment 7"
+output: html_document
+---
+
+__Score:__20
+
+__Student Name:__ Amanda Everitt  
+__Student ID:__ 998974934  
+
+## Assignment 7: Gene Networks
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE, autodep=TRUE)
+cities <- read.delim("us_cities.txt",row.names = 1)
+plot(hclust(dist(cities)))
+```
+
+
+**EXERCISE 1:** Extending the example that I gave for BOS/NY/DC, what are the distances that define each split in the West Coast side of the hclust plot?   
+
+>The distance from LA to SF is 379miles, LA/SF to SEA is 808miles, and from LA/SF/SEA to DEN is 1059miles.
+```{r}
+cities [6:9, 6:9]
+```
+
+What is the city pair and distance the joins the East Coast and West Coast cities? Fill in the values.  
+
+>The city pair that joins the East and West Coast is the DEN/CHI distance because it makes the distances between the LA/SF/SEA/DEN cluster and NY/BOS/DC/CHI/MIA only 996miles. This is the smallest distance between a city in the East Coast cluster and the West Coast cluster. 
+
+
+**EXERCISE 2:** What is the general pattern in the h-clustering data? Using what you learned from the city example, what is the subcluster that looks very different than the rest of the samples?  
+
+>Generally, the data is clustering by tissue type, and then further by each condition within the tissue type. The cluster that looks very different from the rest of the samples is the far left cluster of R500 NDP leaf samples. It did not group with the rest of the leaf samples and instead forms its own clade.
+
+```{r}
+DE_genes <- read.table("DEgenes_GxE.csv", sep = ",")
+DE_gene_names <- row.names(DE_genes)
+brass_voom_E <- read.table("voom_transform_brassica.csv", sep = ",", header = TRUE)
+GxE_counts <- as.data.frame(brass_voom_E[DE_gene_names,])
+GxE_counts <- as.matrix(GxE_counts) # some of the downstream steps require a data matrix
+hr <- hclust(dist(GxE_counts))
+hc <- hclust(dist(t(GxE_counts)))
+plot(hc)
+```
+
+**EXERCISE 3:** With k = 4 as one of the arguments to the `rect.hclust()` function, what is the largest and smallest group contained within the rectangles? Use characteristics in the sample name to describe the clusters.  
+
+>The largest cluster is the cluster containing the SLIQUE,INTERNODE,and some PETIOLE samples. It includes 27 samples. The smallest cluster is the farthest left cluster which contains only the three R500 NDP leaf samples.  
+
+```{r}
+#?rect.hclust
+hc <- hclust(dist(t(GxE_counts)))
+plot(hc) #redraw the tree everytime before adding the rectangles
+rect.hclust(hc, k = 4, border = "red")
+```
+
+b. What does the k parameter specify?  
+
+>The k parameter is how many clusters will be produced. This is a pre-determined amount of clusters, unlike heirarchial clustering.   
+
+c. Play with the k-values. Find a new k-value between 3 and 7 and describe how the samples are falling out.  
+
+>As you increase the amount of clusters, the samples are clustered into smaller groupings. Now instead of a 27 sample size cluster, the largest with k=7 is 15 samples. Also, this clustering reveals another odd cluster containing only the R500_DNP_PETIOLE_1 sample. As you decrease the amountof clustering, the groups becomes less defined and more general. 
+```{r}
+plot(hc) #redraw the tree everytime before adding the rectangles
+rect.hclust(hc, k = 4, border = "red")
+rect.hclust(hc, k = 3, border = "blue")
+rect.hclust(hc, k = 7, border = "green")
+```
+
+
+**EXERCISE 4:** After running the 50 bootstrap samples, leave the plot open. Then change `nboot` to 500. In general, what happens to AU comparing the two plots by flipping between them?  
+
+>Generally, it looks like the using nboot=500 reduces the AU/BP values percentages for every clade. For example one clades p values reduced from 60% and 40% to 54% and 39%.
+```{r}
+library(pvclust)
+
+set.seed(12456) #This ensure that we will have consistent results with one another
+fit <- pvclust(GxE_counts, method.hclust = "ward.D", method.dist = "euclidean", nboot = 50)
+fit.2 <- pvclust(GxE_counts, method.hclust = "ward.D", method.dist = "euclidean", nboot = 500)
+plot(fit) # dendogram with p-values
+plot(fit.2)
+```
+
+
+**Exercise 5:**  
+Take a look at your plot of the cities heatmap and interpret what a dark red value and a light yellow value in the heatmap would mean in geographic distance. Provide an example of of each in your explanation.  
+
+>A dark red value means smaller geographic distances. For example LA/SF, LA/DEN, and LA/SEA are all red values. A light yellow value represents larger geographic distances. For example LA/BOS is a very yellow value on the heatmap and one of the farthest distances. Looking at this heatmap you can visualize the East and West Coast clustering by looking for red blocks. 
+```{r}
+library(gplots)
+cities_mat <- as.matrix(cities)
+cityclust <- hclust(dist(cities_mat))
+#?heatmap.2 #take a look at the arguments
+heatmap.2(cities_mat, Rowv=as.dendrogram(cityclust), scale="row", density.info="none", trace="none")
+```
+
+
+**Exercise 6:** 
+What is the most obvious pattern that you can pick out from this data? Describe what you see.  
+
+>The most obvious pattern from this data is the far left cluster of the three R500_NDP_LEAF samples that are very different then the rest of the data as shown by the consistently bright yellow colors. These samples show little commonality to the rest of the dataset. 
+
+```{r}
+hr <- hclust(dist(GxE_counts))
+#plot(hr)
+heatmap.2(GxE_counts, Rowv = as.dendrogram(hr), scale = "row", density.info="none", trace="none")
+```
+
+**Exercise 7:** In the similar way that you interpreted the color values of the heatmap for the city example, come up with a biological interpretation of the yellow vs. red color values in the heatmap. What would this mean for the pattern that you described in exercise 6? Discuss.  
+
+>Dark red values would represent more similar samples, so those with high sequence similarity; whereas yellow values would represent the less similar sequences. The yellow sequences would likely be the tails on the normal distribution. This means that the bright yellow pattern described in exercise 6 has less sequence simliartiy to the other clusters.
+
+**Exercise 8:** Pretty Colors! Describe what you see visually with 2, 5, 9, and 15 clusters using either method. Why would it be a bad idea to have to few or to many clusters? Discuss with a specific example comparing few vs. many k-means. Justify your choice of too many and too few clusters by describing what you see in each case.  
+
+>If you have to few clusters, the clusters are not informative. It will group samples together very generally and won't actually give insight into the data. For example, in this data set if you use k=2 you can only draw minimal information about groupings. Similarly if you have too many clusters, the clusters are so small you can't actually visualize any significant groupings. In this data set, if you use k=9 or above there appears to be too many clusters comprised of a few samples which just overlap. Using k=5 appears to be the right amount of clusters for this data set because the cluster divisions are clear and contain around 15 samples each. 
+```{r}
+library(ggplot2)
+prcomp_counts <- prcomp(t(GxE_counts)) #gene wise
+scores <- as.data.frame(prcomp_counts$rotation)[,c(1,2)]
+
+set.seed(25) #make this repeatable as kmeans has random starting positions
+```
+
+```{r}
+fit <- kmeans(GxE_counts, 2)
+clus <- as.data.frame(fit$cluster)
+names(clus) <- paste("cluster")
+
+plotting <- merge(clus, scores, by = "row.names")
+plotting$cluster <- as.factor(plotting$cluster)
+
+# plot of observations
+ggplot(data = plotting, aes(x = PC1, y = PC2, label = Row.names, color = cluster)) +
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_point(alpha = 0.8, size = 4, stat = "identity") 
+```
+
+```{r}
+fit <- kmeans(GxE_counts, 5)
+clus <- as.data.frame(fit$cluster)
+names(clus) <- paste("cluster")
+
+plotting <- merge(clus, scores, by = "row.names")
+plotting$cluster <- as.factor(plotting$cluster)
+
+# plot of observations
+ggplot(data = plotting, aes(x = PC1, y = PC2, label = Row.names, color = cluster)) +
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_point(alpha = 0.8, size = 4, stat = "identity") 
+```
+
+
+```{r}
+fit <- kmeans(GxE_counts, 9)
+clus <- as.data.frame(fit$cluster)
+names(clus) <- paste("cluster")
+
+plotting <- merge(clus, scores, by = "row.names")
+plotting$cluster <- as.factor(plotting$cluster)
+
+# plot of observations
+ggplot(data = plotting, aes(x = PC1, y = PC2, label = Row.names, color = cluster)) +
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_point(alpha = 0.8, size = 4, stat = "identity") 
+```
+
+```{r}
+fit <- kmeans(GxE_counts, 15)
+clus <- as.data.frame(fit$cluster)
+names(clus) <- paste("cluster")
+
+plotting <- merge(clus, scores, by = "row.names")
+plotting$cluster <- as.factor(plotting$cluster)
+
+# plot of observations
+ggplot(data = plotting, aes(x = PC1, y = PC2, label = Row.names, color = cluster)) +
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_point(alpha = 0.8, size = 4, stat = "identity") 
+```
+
+**Exercise 9:** Based on this Gap statistic plot at what number of k clusters (x-axis) do you start to see diminishing returns? Explain your answer using the plot as a guide to help you interpret the data.  
+
+>After about k=5 there is diminishing returns on increasing the k value. The gap statistic raises significantly slower after k=5. To be more specific, from k=0 to k=5 the gap statistic raises from about 0.15; however, from k=6 to k=20 the gap statistic only raises about 0.04. 
+
+```{r}
+library(cluster)
+set.seed(125)
+gap <- clusGap(GxE_counts, FUN = kmeans, iter.max = 30, K.max = 20, B = 50, verbose=interactive())
+plot(gap, main = "Gap Statistic")
+```
+
+
+**Exercise 10:** What did clusGap() calculate? How does this compare to your answer from Exercise 9? Make a plot using the combined autoplot() and kmeans functions as you did before, but choose the number of k-means you chose and the number of k-means that are calculated from the Gap Statistic. Describe the differences in the plots.  
+
+>clusGap() calculates the "goodness" of the gap statistic. Ultimately this uses bootstrapping to return the number of clusters a data set should use based on standard deviations of the gap statistic. The ouput suggests that k=4 is better than the k=5 that I suggested in Exercise 9. There is not a lot of differences between the two graphs since the k values are so close but, you can still se there is generally the same size of samples in each cluster. The main difference between the two graphs is the purple cluster in the k=4 graph is split in two in the k=5 graph. 
+```{r}
+with(gap, maxSE(Tab[,"gap"], Tab[,"SE.sim"], method="firstSEmax"))
+```
+
+```{r}
+fit <- kmeans(GxE_counts, 4)
+clus <- as.data.frame(fit$cluster)
+names(clus) <- paste("cluster")
+
+plotting <- merge(clus, scores, by = "row.names")
+plotting$cluster <- as.factor(plotting$cluster)
+
+# plot of observations
+ggplot(data = plotting, aes(x = PC1, y = PC2, label = Row.names, color = cluster)) +
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_point(alpha = 0.8, size = 4, stat = "identity") 
+```
+
+```{r}
+fit <- kmeans(GxE_counts, 5)
+clus <- as.data.frame(fit$cluster)
+names(clus) <- paste("cluster")
+
+plotting <- merge(clus, scores, by = "row.names")
+plotting$cluster <- as.factor(plotting$cluster)
+
+# plot of observations
+ggplot(data = plotting, aes(x = PC1, y = PC2, label = Row.names, color = cluster)) +
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_point(alpha = 0.8, size = 4, stat = "identity") 
+```
+

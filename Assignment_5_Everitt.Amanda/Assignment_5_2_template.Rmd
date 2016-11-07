@@ -1,0 +1,96 @@
+# Assignment_5_2.Rmd
+
+Student Name: Amanda Everitt
+Student ID: 998974934
+
+Insert answers to R SNP exercises 1 - 4 here.  Submit .Rmd and .html by git.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE, autodep=TRUE)
+#install.packages(ggplot)
+library(ggplot2)
+vcf.data <- read.table("~/Labwork/Github/Assignment_5_Everitt.Amanda/SNP_analysis/IMB211_R500.vcf",as.is=T,na.strings = ".")
+head(vcf.data)
+vcf.header <- system("grep '#C' ./SNP_analysis/IMB211_R500.vcf",intern = TRUE) #might not work on Windows
+vcf.header <- sub("#","",vcf.header) #get rid of the pound sign
+vcf.header <- unlist(strsplit(vcf.header,split="\t"))
+colnames(vcf.data) <- vcf.header
+head(vcf.data)
+# Before splitting add NAs to blank cells
+vcf.data$IMB211[is.na(vcf.data$IMB211)] <- "NA:NA:NA:NA:NA:NA:NA:NA"
+IMB211.tmp <- matrix(
+  unlist(strsplit(vcf.data$IMB211,split = ":")),
+  nrow=nrow(vcf.data),
+  byrow=TRUE
+  )
+head(IMB211.tmp)
+colnames(IMB211.tmp) <- paste("IMB211",c("gt","tot.depth","allele.obs","ref.depth","ref.qual","alt.depth","alt.qual","gen.lik"),sep="_")
+
+vcf.data$R500[is.na(vcf.data$R500)] <- "NA:NA:NA:NA:NA:NA:NA:NA"
+
+R500.tmp <- matrix(
+  unlist(strsplit(vcf.data$R500,split = ":")),
+  nrow=nrow(vcf.data),
+  byrow=TRUE
+  )
+head(R500.tmp)
+colnames(R500.tmp) <- paste("R500",c("gt","tot.depth","allele.obs","ref.depth","ref.qual","alt.depth","alt.qual","gen.lik"),sep="_")
+
+vcf.data <- cbind(vcf.data,IMB211.tmp,R500.tmp,stringsAsFactors=FALSE)
+summary(vcf.data)
+```
+
+__Exercise 1__:
+To explore the quality of our data, make a histogram of genotype quality. It is hard to get a feel for the QUAL scores at the low end, so try making a second histogram that illustrates this region better. (Hint: one option is to subset the data)
+```{r}
+ggplot(data=vcf.data, aes(x=QUAL)) + geom_histogram(binwidth=35) + ggtitle("Quality Score Distribution of A01 chr") 
+
+ggplot(data=subset(vcf.data, vcf.data$QUAL <1000), aes(x=QUAL)) + geom_histogram(binwidth=35) + ggtitle("Quality Score Distribution of A01 chr (lower bound)") 
+```
+
+
+__Exercise 2__:
+We only want to keep positions that have a reasonable probabilty of being correct.  
+
+a At a quality of 40 what is the probability that the genotype call is wrong?  
+
+>0.01% or a 0.0001 probability the call is wrong (because it scales in a log fashion).
+
+b Subset the data to only keep positions where the quality score is 40 or greater.
+```{r}
+corrected.vcf.data <- subset(vcf.data, vcf.data$QUAL >40)
+```
+c What percentage of SNPs were retained?  
+
+>By looking at the global environment I can see that my corrected.vcf.data has 47718 observed values, where the original vcf.data has 55088 values-- therefore 86.62% of SNPs were retained. ((47718/55088)*100)
+
+
+__Exercise 3__:  
+
+a Which SNPS would be most useful for a downstream QTL analysis between IMB211 and R500? (Ignore the allele categories that have “2”, “3”, or “4”)  
+
+b (optional) Subset the data frame so that you only have these SNPs.  
+
+c (optional) How many SNPS are retained?   
+
+
+```{r}
+allele.1.0 <- subset(corrected.vcf.data, corrected.vcf.data$IMB211_gt == '0/0'| corrected.vcf.data$IMB211_gt == '0/1'| corrected.vcf.data$IMB211_gt == '1/1')
+allele.1.0 <- subset(allele.1.0, allele.1.0$R500_gt == '0/0'| allele.1.0$R500_gt == '0/1' | allele.1.0$R500_gt == '1/1')
+ftable(allele.1.0[,c("IMB211_gt","R500_gt")])
+```
+
+>The most informative SNPs for a QTL analysis will be the SNPs that vary between IMB211 and R500. For example, analyzing the column with 7659 SNPs will show differences between the homozygous reference (R500) and a homozygote sample(IMB211). Also, in order to have less confusion in the F2 of which "0" is which, heterozygotes would be less useful as well. This would reduce the SNPs from 47,718 possible to only 17,046, a 65% reduction. (9387+7659)
+
+__Exercise 4__:
+a Using the higher quality SNP list, plot the position along the chromosome of each SNP (x axis), read depth (R500 and IMB211 combined) (y axis).
+```{r}
+D <- transform(corrected.vcf.data, IMB211_tot.depth = as.numeric(IMB211_tot.depth), R500_tot.depth = as.numeric(R500_tot.depth), POS= as.numeric(POS)) #make columns I need numeric so I can graph it
+
+ggplot(D, aes(POS,(IMB211_tot.depth + R500_tot.depth))) + geom_point()
+
+```
+
+b Why might there be gaps with no SNPs?  
+
+>Although difficult to see in the crowded graph, there may be gaps with no SNPs if there are regions that are harder to be sequenced than others. For example, sequencing read depth is lower in heterochromatic regions like the centromere.

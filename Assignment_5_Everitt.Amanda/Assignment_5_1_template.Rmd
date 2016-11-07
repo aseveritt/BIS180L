@@ -1,0 +1,121 @@
+# Assignment_5_1.Rmd
+
+__Score:__18
+
+* **RD** -0.5 Q3c. Adapters and barcodes are different, in the FASTQC report there is no indication of adapter contamination. Adapters are usually towards the end of reads while barcodes are a the beginning of reads
+* **RD** -0.5 Q3d. The lengths of reads are already uniform (100 bp each for this sequencing machine), the trimming would actually make them less uniform in length but their overall 'per base pair quality' would be higher giving them a much better chance of aligning to the reference genome
+* **RD** -1 Q5. This loop would have issues working properly
+
+Student Name: Amanda Everitt
+Student ID: 998974934
+
+Insert answers to Illumina exercises 1 - 7 here.  Submit .Rmd and .html by git.  
+
+
+__Exercise 1:__  
+a. What is the read length? (can you do this without manually counting?)  
+
+>The read length is 100.
+
+```
+awk '{if(NR%4==2) print NR"\t"$0"\t"length($0)}' GH.lane67.fastq > readLength
+awk '{print$3}' readLength 
+
+```
+
+
+b What is the machine name?  
+
+>HWI-ST611_0203
+```
+grep @ GH.lane67.fastq | head -1    #gives @HWI-ST611_0203:1:1101:1379:2108#0/1
+```
+
+c How may reads are in this file? (show how you figured this out)  
+
+>There are 1,000,000 reads. 
+```
+grep @ GH.lane67.fastq | wc -l        # gives 1000000
+```
+
+d Are the quality scores Phred+33 or Phred+64? (how did you figure this out?)  
+
+>The quality scores are Phred+64. I figured this out by searching for quality score characters that are present in Phred+64 and not in Phred+33. Given the table, any uppercase character from K-Z are not present in Phred+33. By searching within the fastq file, I discovered the quality scores contain "B" and "X" among other values. This means the score has to be from Phred+64, specifically corresponding to Illumina 1.3+ Phred+64. 
+```
+grep 'B' GH.lane67.fastq | head -1
+grep 'X' GH.lane67.fastq | head -1
+```
+
+__Exercise 2:__ Compare your fastq results to the examples of good sequence and bad sequence on the fastqc website. Comment on any FastQC items that have an “X” by them in the report. What might have caused these issues? (hint: think about barcodes).  
+
+>For this data, the FastQC showed in failing scores in: Per base sequence quality, Per base sequence content, Per base GC content, and K-mer content. Due to mechanical bias in Illumina sequencing, commonly the end of sequences have poor sequence quality. Given that the per base sequence quality progressively declines as position in read increases--this is likely the cause. It appears barcodes are the cause of both the per base sequence content and per base GC content failing. This is because the barcodes, which appear to occur around the 15th bp, do not meet the qualifications FastQC expects natural sequences to have. The barcodes also caused the failing K mer scores because it skewed the amount of possible subsequences to be lower. 
+
+__Exercise 3:__ Take a look at the trimmomatic web page and user manual and figure out how to modify the command below to clip after the average read quality across 4 bases drops to 20 or less. AND only retain reads where the trimmed length is 50bp or more.
+
+a What trimmomatic command did you use?
+```
+trimmomatic.sh SE -phred64 GH.lane67.fastq GH.lane67.trimmed.fastq SLIDINGWINDOW:4:20 MINLEN:50 
+```
+b How many reads were removed by trimming?  
+
+>42,107 reads were removed by trimming.(1000000-957893)
+```
+grep @ GH.lane67.trimmed.fastq |wc -l
+#957893
+```
+c Trimmomatic has the option to remove Illumina adapters. Why did we not do that here?  
+
+>Our adapters are the barcodes which are indicating which library the sequences came from. If we were to remove the adapters we would loose all information about which library and treatment type the sequence came from. 
+
+d rerun FastQC on the trimmed sequences. Which issues did the trimming fix?  
+
+>Trimming helped fix the sequence length distrbution and Kmer content. This conceptually makes sense because the quality of the reads was trailing at the ends, so Trimmomatic trimmed them back-- thus making the lengths more uniform. 
+
+__Excercise 4__: Look at the README for auto barcode and figure out how to run it to split your samples. Specify that the split fastq files are placed in the directory split_fq. Use the perl (.pl) version of the script
+
+a what command did you use?
+```
+barcode_split_trim.pl --id Brapa -b barcode_key_GH.txt --list -o split_fastq GH.lane67.trimmed.fastq 
+```
+b what percentage of reads did not match a barcode? What are possible explanations?  
+
+>6.12% of the reads did not match a barcode((58690/957893)*100= 6.12).  
+>Possible explantations include:  
+*  1) The barcode list was not complete or not correct.   
+  2) The barcodes were not sequenced properly by Illumina.  
+  3) The barcodes were mistakenly trimmed or removed in previous filtering methods.
+```
+grep @ unmatched.fq_GH.lane67.trimmed.bar_barcode_key_GH.txt.fq | wc -l
+58690
+
+```
+
+__Exercise 5__ : use a bash for loop run tophat on all of the fastq files.
+```
+barcodes=" ls *.fq"
+for i in $barcodes; do tophat --phred64-quals -p 2 Brapa_reference/BrapaV1.5_chrom_only Brapa_fastq/split_fastq/$i -o `echo $(basename "$i" .fq)`; done
+
+#will print out put like: 
+tophat --phred64-quals -p 2 Brapa_reference/BrapaV1.5_chrom_only Brapa_fastq/split_fastq/IMB211_DP_1_INTERNODE.fq -o IMB211_DP_1_INTERNODE
+#for each one 
+
+```
+
+__Exercise 6__: Take a look at the align_summary.txt file.
+a. What percentage of reads mapped to the reference?   
+
+>81.1% of reads mapped to the reference. Mapped   :  20443370 (81.1% of input)
+
+b. Give 2 reasons why reads might not map to the reference.  
+
+>1.The reads may be part of genes that are not present in the reference because of speciation.  
+2. The reads may not map because they were trimmed to far to where it doesn't match the reference sequences well enough. 
+
+__Exercise 7__:
+a Can you distinguish likely SNPs from sequencing/alignment errors? How?  
+
+>Yes, by looking at the frequency of occurance of the SNP. Real SNPs will occur nonrandomly (ex. 80G/20A) whereas sequencing and alignment errors will occur randomly. By looking at SNP frequencies at single positions you can distinguish likely changes in the genome rather than program errors. 
+
+b Go to A01:15,660,359-15,665,048 (you can cut and paste this into the viewer and press “Go”. For each of the the three genes in this region: does the annotation (in blue) appear to be correct or incorrect? If incorrect, describe what is wrong  
+
+>Just by looking at the splice junction the annotation appears to be correct. However, when you also include the reads from our data the annotation appears to be incorrect. There are areas represented in our reads that are not in the annotation. For example the left most exon of Bra038903 is not represented. Also, areas where coverage decreases tend to be under represented like the right most part of Bra038904.

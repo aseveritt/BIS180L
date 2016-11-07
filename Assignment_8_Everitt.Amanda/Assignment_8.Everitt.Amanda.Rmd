@@ -1,0 +1,138 @@
+# Assignment_8_Everitt.Amanda
+
+__Score:__20
+
+__Student Name:__ Amanda Everitt
+
+__Student ID:__ 998974934
+
+Q1: Can you see any obvious differences by eye?  
+
+>Just by eye, it appears that the intron.9.fa and intron.7.fa file has shorter sequences than the intron.1.fa. This would make sense because the size of the files progessively decrease, intron 1 being 7.3M larger than intron 9. Also, all the  files appear to  be very A/T heavy. 
+
+```
+for i in `seq 1 9` ; do perl kmer_stats.pl -k 1 introns.$i.fa ; done
+```
+Q2: Do the compositions of introns at different locations look different by mono-nucleotide composition?  
+
+>Yes, looking at the mono nucleotide frequencies make the intron composition noticeably different. For example the freq(A) at intron 1,2 and 3 is 0.274 whereas it is only 0.26 at intron 6,7,8,and 9.The freq(A) decreases as you move downstream. It also appears that freq(G) increases as you move from intron 1 to intron 9. While there are differences it is very difficult to determine if they are significant. 
+
+```
+for i in `seq 1 9`; do perl ./kmer_stats.pl -k 5 introns.$i.fa > counts.$i.5.txt ; done
+paste counts.1.5.txt counts.2.5.txt
+paste counts.2.5.txt counts.6.5.txt
+
+paste counts.1.5.txt counts.2.5.txt | awk '{print $2, $5, $1}'| sort -n > newfile.1.2.txt
+paste counts.1.5.txt counts.9.5.txt | awk '{print $2, $5, $1}'| sort -n > newfile.1.9.txt
+```
+Q3: Do you see any obvious differences? Do you think these are statistically relevant or just random noise? How could you tell the difference?  
+
+>Yes, there appears to be signficant differences between the introns when you look at 5 nucleotide segments. You can tell the difference between noise and significance by looking at multiple pairwise comparisons. For example by doing intron1/intron2 versus intron1/intron 9 you can see that the "GCGGT" difference is significant because there is such a large difference between intron 2 and intron 9. However, the "CGACC" difference is not significant because it occurs in both intron 2 and 9 (even though it may look significant on it's own).  
+
+```
+OUPUT:
+
+intron 1              intron 2  
+0.000102545621274306 0.000108914573164916 GCGGT
+0.000101254579279846 6.88475540213461e-05 CGACC
+intron 1              intron 9
+0.000102545621274306 9.62051541351996e-05 GCGGT
+0.000101254579279846 6.04078874802416e-05 CCGAC
+```
+
+```
+sh loop_kl.sh > KLdist.txt
+awk '{print $4, $1,$2,$3}' KLdist.txt | sort
+```
+Q4: Which introns are similar and different from others? Are first introns different from introns farther downstream as suggested by the biological model of IME?  
+
+>The first introns are more similar to each other than the downstream elements--which is consistent with the IME model. Most differences are seen at the more extreme spacial differences like intron 1/intron 9 and intron 1/intron 7.  
+```
+OUTPUT:
+
+These are the top 5, most similar introns (not including self vs self):
+0.00247028874764407 4 vs 5:
+0.00259928992974639 3 vs 4:
+0.0026265499212776  5 vs 6:
+0.00292964265062677 6 vs 7:
+0.003381872209034   4 vs 6:  
+
+These are the last 5, most dissimilar introns:
+0.0332441443647111 5 vs 1:
+0.0365920029496328 8 vs 1:
+0.0370553786851746 6 vs 1:
+0.0374644263349917 9 vs 1:
+0.0379317501778011 7 vs 1:
+```
+
+```
+for k in `seq 1 9`; do perl kmer_stats.pl -k $k proximal.fa > counts.proximal.$k.txt; perl kmer_stats.pl -k $k distal.fa   > counts.distal.$k.txt; echo -n "k=$k "; perl kl_distance.pl counts.proximal.$k.txt counts.distal.$k.txt; done
+```
+Q5: The program reported some errors at high values of K. Any idea why?  
+
+>With larger K values, there is less chance that the same 7nt sequence occurs in each file. It is essentially 4,096 (4^6) possibilities versus 16,384 (4^7) possibilites. This is why at large K values you will commonly get counts of zero which is why the program reprots errors. 
+
+```
+for i in `seq 1 9`; do perl discriminator.pl counts.proximal.$i.txt counts.distal.$i.txt proximal.fa  > prox.$i.txt ; done
+
+cat prox.* > prox.all.txt
+
+for i in `seq 1 9`; do perl discriminator.pl counts.proximal.$i.txt counts.distal.$i.txt distal.fa  > dist.$i.txt ; done
+
+cat dist.* > dist.all.txt
+
+awk '{print $2}' prox.all.txt |  awk '{x+=$0}END{print x}'
+#251590
+
+wc -l prox.all.txt 
+#167166 prox.all.txt
+
+awk '{print $2}' dist.all.txt |  awk '{x+=$0}END{print x}'
+#-223692
+
+wc -l dist.all.txt 
+#210564 dist.all.txt
+```
+Q6: What is the average score of a proximal intron? What is the average score of a distal intron? Use R to plot histograms.   
+
+>The average score of a proximal intron is 1.505 (251590/167166). The average score of a distal intron is -1.06 (-223692/210564).
+```{r}
+setwd("~/MEGA/BIS180L/Labwork/Github/Assignment_8_Everitt.Amanda/imelab")
+prox <- read.delim("prox.all.txt", header=FALSE)
+dist <- read.delim("dist.all.txt", header=FALSE)
+hist(prox$V2)
+hist(dist$V2)
+```
+
+
+```
+perl -lane 'print substr($F[2],1) if />/' db_IME_Rose_WT_introns.fa > observed.txt
+
+perl discriminator.pl counts.proximal.4.txt counts.distal.4.txt db_IME_Rose_WT_introns.fa > predicted.txt
+
+paste predicted.txt observed.txt > ime.txt
+
+sh loop_R.sh
+```
+
+Q7: What values of K work well? Why do you think that is? How does data set size influence the optimal value of K?  
+
+>Initially I observed the scatterplot created from the IME data which plots the predicted discriminator scores versus the observed discriminator scores. At K=1 there is no correlation-- so I can immediately see that K=1 is not optimal. When I furthre looked at the rsquared value, it is clear that K=6 is significantly better than K=2,3,4,or 5 for this data set.  
+
+k=1 : 0.1875412
+k=2 : 0.3765344
+k=3 : 0.4921342
+k=4 : 0.5179208
+k=5 : 0.5078738
+k=6 : 0.523392
+
+>The larger the data set, the higher the optimal K value because there is a greater chance that the a sequence length K will actually occur. 
+
+```
+cat introns.*.fa > all_introns.fa
+perl discriminator.pl counts.proximal.5.txt counts.distal.5.txt all_introns.fa | sort -n -k2
+
+```
+Q8: Which intron in A. thaliana is predicted to enhance expression the most?  
+
+>IME_Athaliana_77647 is the intron with the highest predicted value of	62.65. This is preliminarily the intron most likely to enhance expression the most. 
